@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin format 1.0
+ * Plugin format 2.0
  */
 #App\GP247\Plugins\MFA\AppConfig.php
 namespace App\GP247\Plugins\MFA;
@@ -8,28 +8,12 @@ namespace App\GP247\Plugins\MFA;
 use App\GP247\Plugins\MFA\Models\ExtensionModel;
 use GP247\Core\Models\AdminConfig;
 use GP247\Core\Models\AdminHome;
+use GP247\Core\ExtensionConfigDefault;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-class AppConfig
+class AppConfig extends ExtensionConfigDefault
 {
-    public $configGroup;
-    public $configKey;
-    public $configCode;
-    public $appPath;
-    public $title;
-    public $image;
-    public $version;
-    public $auth;
-    public $link;
-    public $requireCore;
-    public $requirePackages;
-    public $requireExtensions;
-    
-    const ON = 1;
-    const OFF = 0;
-    const ALLOW = 1;
-
     public function __construct()
     {
         //Read config from gp247.json
@@ -44,7 +28,7 @@ class AppConfig
         //Path
         $this->appPath = $this->configGroup . '/' . $this->configKey;
         //Language
-        $this->title = gp247_language_render($this->appPath.'::lang.title');
+        $this->title = trans($this->appPath.'::lang.title');
         //Image logo or thumb
         $this->image = $this->appPath.'/'.$config['image'];
         //

@@ -1,5 +1,7 @@
 <?php
 use Illuminate\Support\Facades\Route;
+use App\GP247\Plugins\MFA\Admin\Livewire\MfaDashboard;
+use App\GP247\Plugins\MFA\Admin\Livewire\MfaUsers;
 
 $config = file_get_contents(__DIR__.'/gp247.json');
 $config = json_decode($config, true);
@@ -44,22 +46,22 @@ if(gp247_extension_check_active($config['configGroup'], $config['configKey'])) {
         }
     );
 
-    // Admin routes for plugin configuration
+    // Admin routes for plugin management — v2 (Livewire + TailAdmin), replacing
+    // the legacy AdminController. Route names kept identical to v1 for
+    // back-compat: the AdminMenu row installed by ExtensionModel references
+    // `route_admin::admin_mfa.index`. The reset action moved into the MfaUsers
+    // Livewire component, so the old POST `admin_mfa.reset_user` route is gone.
     Route::group(
         [
             'prefix' => GP247_ADMIN_PREFIX.'/mfa',
             'middleware' => GP247_ADMIN_MIDDLEWARE,
-            'namespace' => '\App\GP247\Plugins\MFA\Admin',
-        ], 
+        ],
         function () {
-            Route::get('/', 'AdminController@index')
+            Route::get('/', MfaDashboard::class)
                 ->name('admin_mfa.index');
-            
-            Route::get('/users/{guard?}', 'AdminController@usersManagement')
+
+            Route::get('/users', MfaUsers::class)
                 ->name('admin_mfa.users');
-            
-            Route::post('/reset-user/{guard}', 'AdminController@resetUserMFA')
-                ->name('admin_mfa.reset_user');
         }
     );
 }
