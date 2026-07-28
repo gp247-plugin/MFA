@@ -42,36 +42,44 @@ class MfaUsers extends GP247AdminComponent
     public string $guard = '';
 
     /**
-     * Guard keys that are enabled in the plugin config.
+     * Guard keys that can actually be managed here: those whose user model
+     * class is present on this install.
+     *
+     * WHY: user management must cover any account type that exists, regardless
+     * of whether MFA enforcement is currently enabled for it (an admin still
+     * needs to inspect/reset a customer's MFA). Guards whose model is absent
+     * (e.g. vendor/pmo plugins not installed) are hidden so their list never
+     * errors — mirrors the enrolment logic in function.php.
      *
      * @return array<int, string>
      */
-    public function enabledGuards(): array
+    public function availableGuards(): array
     {
-        $enabled = [];
+        $available = [];
         foreach ((array) config('Plugins/MFA.guards', []) as $key => $guardConfig) {
-            if (!empty($guardConfig['enabled'])) {
-                $enabled[] = $key;
+            $model = $guardConfig['model'] ?? null;
+            if ($model && class_exists($model)) {
+                $available[] = $key;
             }
         }
 
-        return $enabled;
+        return $available;
     }
 
     /**
      * Resolve the guard the screen should show: the selected one when it is
-     * valid/enabled, otherwise the first enabled guard.
+     * available, otherwise the first available guard.
      *
      * @return string|null
      */
     public function currentGuard(): ?string
     {
-        $enabled = $this->enabledGuards();
-        if ($this->guard !== '' && in_array($this->guard, $enabled, true)) {
+        $available = $this->availableGuards();
+        if ($this->guard !== '' && in_array($this->guard, $available, true)) {
             return $this->guard;
         }
 
-        return $enabled[0] ?? null;
+        return $available[0] ?? null;
     }
 
     /**
@@ -181,7 +189,7 @@ class MfaUsers extends GP247AdminComponent
 
         return view('Plugins/MFA::Admin.users', [
             'users' => $users,
-            'enabledGuards' => $this->enabledGuards(),
+            'guards' => $this->availableGuards(),
             'currentGuard' => $currentGuard,
             'errorMsg' => $errorMsg,
         ])->layout('gp247-admin::layouts.admin', [

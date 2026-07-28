@@ -8,17 +8,21 @@ use GP247\Core\AdminShell\Infrastructure\GP247AdminComponent;
 
 /**
  * MFA admin dashboard (v2 port of the legacy AdminLTE AdminController@index) —
- * a read-only overview on the TailAdmin shell: MFA adoption stats per guard and
- * the guard configuration as declared in the plugin `config.php`.
+ * MFA adoption stats per guard plus an EDITABLE per-guard settings form on the
+ * TailAdmin shell.
  *
- * Extends GP247AdminComponent so the screen inherits Layer-2 RBAC (read
- * authorization on mount) and the shared admin layout, exactly like core/shop
- * admin screens. Gated by `admin_mfa` (super administrator bypasses; granular
- * roles must be granted the slug — same convention as the News plugin).
+ * Settings are read/written through admin_config (helper mfa_* in function.php),
+ * NOT config.php: config.php holds package defaults that a 1-click plugin update
+ * overwrites, whereas admin_config is preserved by the update flow — so the site
+ * owner's choices survive updates (ADR plugin-manager_extension-update-flow #7,
+ * RISK-OPS-plugin-config-file-overwrite).
+ *
+ * Extends GP247AdminComponent for Layer-2 RBAC + shared layout. Gated by
+ * `admin_mfa` (super administrator bypasses; granular roles need the slug).
  *
  * @aidlc-unit plugin-mfa
- * @aidlc-story GP247-v2-compat
- * @aidlc-adr ADR-001, ADR-005, ADR-007
+ * @aidlc-story US-PLG-004, GP247-v2-compat
+ * @aidlc-adr ADR-001, ADR-005, ADR-007, plugin-manager_extension-update-flow
  */
 class MfaDashboard extends GP247AdminComponent
 {
@@ -30,13 +34,74 @@ class MfaDashboard extends GP247AdminComponent
     protected ?string $permission = 'admin_mfa';
 
     /**
-     * All guards declared in the plugin config (guard key => settings array).
+     * Editable per-guard settings, keyed by guard: enabled, forced,
+     * qr_code_size, recovery_codes_count, window. Bound to the settings form.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    public array $settings = [];
+
+    /**
+     * Livewire lifecycle hook: authorize (parent) then hydrate the form from the
+     * effective config (file defaults ⊕ admin_config overrides).
+     *
+     * @return void
+     */
+    public function mount(): void
+    {
+        parent::mount();
+        $this->loadSettings();
+    }
+
+    /**
+     * Populate $this->settings from the effective guard config.
+     *
+     * @return void
+     */
+    protected function loadSettings(): void
+    {
+        $this->settings = [];
+        foreach (mfa_effective_guards() as $guard => $conf) {
+            $this->settings[$guard] = [
+                'enabled' => (int) ($conf['enabled'] ?? 0),
+                'forced' => (int) ($conf['forced'] ?? 0),
+                'qr_code_size' => (int) ($conf['qr_code_size'] ?? 200),
+                'recovery_codes_count' => (int) ($conf['recovery_codes_count'] ?? 8),
+                'window' => (int) ($conf['window'] ?? 1),
+            ];
+        }
+    }
+
+    /**
+     * Persist the edited settings to admin_config (update-safe store).
+     *
+     * @return void
+     */
+    public function save(): void
+    {
+        $this->authorizeAction('save');
+
+        $this->validate([
+            'settings.*.enabled' => ['boolean'],
+            'settings.*.forced' => ['boolean'],
+            'settings.*.qr_code_size' => ['integer', 'min:50', 'max:1000'],
+            'settings.*.recovery_codes_count' => ['integer', 'min:1', 'max:50'],
+            'settings.*.window' => ['integer', 'min:0', 'max:10'],
+        ]);
+
+        mfa_save_guard_settings($this->settings);
+        $this->loadSettings();
+        $this->notify('success', gp247_language_render('Plugins/MFA::lang.settings_saved'));
+    }
+
+    /**
+     * All guards with their effective config (for stats + display).
      *
      * @return array<string, array<string, mixed>>
      */
     public function guardsConfig(): array
     {
-        return (array) config('Plugins/MFA.guards', []);
+        return mfa_effective_guards();
     }
 
     /**

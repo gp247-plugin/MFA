@@ -11,9 +11,6 @@
 --}}
 <div class="space-y-5">
 
-    {{-- Toasts container for reset feedback --}}
-    <x-gp247::toast />
-
     {{-- Header: title + back to dashboard --}}
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -30,19 +27,20 @@
         </x-gp247::button>
     </div>
 
-    @if(count($enabledGuards) === 0)
-        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+    @if(count($guards) === 0)
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900 dark:text-amber-200">
             <i class="fas fa-exclamation-triangle"></i>
-            {{ gp247_language_render('Plugins/MFA::lang.no_enabled_guards') }}
+            {{ gp247_language_render('Plugins/MFA::lang.no_available_guards') }}
         </div>
     @else
         <x-gp247::card>
-            {{-- Guard filter --}}
+            {{-- Account type (guard) filter: every guard whose model exists,
+                 so an admin can manage/reset MFA for any account type. --}}
             <div class="mb-4 flex flex-wrap items-center gap-2">
                 <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
                     {{ gp247_language_render('Plugins/MFA::lang.select_guard') }}:
                 </span>
-                @foreach($enabledGuards as $guard)
+                @foreach($guards as $guard)
                     <x-gp247::button
                         size="sm"
                         :variant="$currentGuard === $guard ? 'primary' : 'ghost'"
@@ -53,7 +51,7 @@
             </div>
 
             @if($errorMsg)
-                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900 dark:text-red-200">
                     <i class="fas fa-exclamation-triangle"></i> {{ $errorMsg }}
                 </div>
             @else
@@ -73,18 +71,26 @@
                                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{{ $user->display_name ?? '-' }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{{ $user->email }}</td>
                                 <td class="px-4 py-3 text-sm">
-                                    @if($user->two_factor_auth && $user->two_factor_auth->enabled)
-                                        <x-gp247::badge color="green">
+                                    @php($tfa = $user->two_factor_auth)
+                                    @if($tfa && $tfa->enabled)
+                                        <x-gp247::badge color="green" class="gap-1">
                                             <i class="fas fa-check"></i> {{ gp247_language_render('Plugins/MFA::lang.enabled') }}
                                         </x-gp247::badge>
+                                    @elseif($tfa)
+                                        {{-- Record exists but not yet activated (setup abandoned midway). --}}
+                                        <x-gp247::badge color="amber" class="gap-1">
+                                            <i class="fas fa-hourglass-half"></i> {{ gp247_language_render('Plugins/MFA::lang.mfa_pending') }}
+                                        </x-gp247::badge>
                                     @else
-                                        <x-gp247::badge color="gray">
-                                            <i class="fas fa-times"></i> {{ gp247_language_render('Plugins/MFA::lang.disabled') }}
+                                        <x-gp247::badge color="gray" class="gap-1">
+                                            <i class="fas fa-times"></i> {{ gp247_language_render('Plugins/MFA::lang.not_setup') }}
                                         </x-gp247::badge>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-sm">
-                                    @if($user->two_factor_auth && $user->two_factor_auth->enabled)
+                                    {{-- Reset is offered whenever a record exists (enabled OR pending)
+                                         so a stuck/partial enrolment can also be cleared. --}}
+                                    @if($tfa)
                                         <x-gp247::button
                                             size="sm"
                                             variant="danger"
@@ -93,7 +99,7 @@
                                             <i class="fas fa-trash"></i> {{ gp247_language_render('Plugins/MFA::lang.reset_mfa') }}
                                         </x-gp247::button>
                                     @else
-                                        <span class="text-gray-400">{{ gp247_language_render('Plugins/MFA::lang.no_mfa') }}</span>
+                                        <span class="text-gray-400">&mdash;</span>
                                     @endif
                                 </td>
                             </tr>

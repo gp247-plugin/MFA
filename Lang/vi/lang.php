@@ -67,6 +67,19 @@ return [
     'window' => 'Cửa sổ thời gian',
     'config_readonly_note' => 'Cấu hình MFA chỉ có thể chỉnh sửa trực tiếp trong file config để đảm bảo bảo mật.',
     'config_file_path' => 'Đường dẫn file config',
+    'status_on' => 'Bật',
+    'status_off' => 'Tắt',
+
+    // Configuration guide (hiển thị trên dashboard để hỗ trợ chủ site cấu hình MFA)
+    'settings_saved' => 'Đã lưu thiết lập MFA',
+    'settings_editable_note' => 'Các thiết lập này được lưu vào cơ sở dữ liệu và giữ nguyên khi cập nhật plugin. Trường nâng cao (model người dùng, redirect) vẫn nằm trong file config.',
+    'config_guide_title' => 'Hướng dẫn cấu hình',
+    'config_guide_intro' => 'Bật/tắt MFA cho từng loại tài khoản bên dưới và lưu lại — thay đổi có hiệu lực ngay, không cần build lại hay migration. Thiết lập lưu trong cơ sở dữ liệu (an toàn khi cập nhật).',
+    'config_guide_enable' => 'Bật (Enabled): bật MFA cho loại tài khoản này. Khi tắt, người dùng loại đó không bị yêu cầu MFA.',
+    'config_guide_forced' => 'Bắt buộc (Forced): yêu cầu mọi người dùng của loại tài khoản này phải thiết lập MFA trước khi tiếp tục; để tắt thì tùy chọn (không bắt buộc).',
+    'config_guide_qr' => 'Kích thước mã QR: kích thước (pixel) của mã QR khi thiết lập (mặc định 200).',
+    'config_guide_recovery' => 'Số lượng mã khôi phục: số mã dự phòng dùng-một-lần tạo cho mỗi người dùng (mặc định 8).',
+    'config_guide_window' => 'Cửa sổ thời gian: dung sai lệch giờ tính theo bước 30 giây (1 = ±30s). Chỉ tăng khi người dùng báo mã không khớp.',
     'select_guard' => 'Chọn Guard',
     'load_users' => 'Tải danh sách',
     'name' => 'Tên',
@@ -95,6 +108,9 @@ return [
     'reset_mfa' => 'Reset MFA',
     'reset_mfa_confirm' => 'Bạn có chắc muốn reset MFA cho người dùng này?',
     'mfa_reset_successfully' => 'MFA đã được reset thành công',
+    'mfa_pending' => 'Chờ thiết lập',
+    'not_setup' => 'Chưa thiết lập',
+    'no_available_guards' => 'Không có loại tài khoản nào để quản lý.',
     
     // Messages
     'mfa_enabled_successfully' => 'MFA đã được bật thành công',

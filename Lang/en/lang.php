@@ -67,6 +67,19 @@ return [
     'window' => 'Time Window',
     'config_readonly_note' => 'MFA configuration can only be edited directly in the config file for security reasons.',
     'config_file_path' => 'Config file path',
+    'status_on' => 'On',
+    'status_off' => 'Off',
+
+    // Configuration guide (shown on the dashboard to help site owners set MFA up)
+    'settings_saved' => 'MFA settings have been saved',
+    'settings_editable_note' => 'These settings are saved to the database and are preserved when the plugin is updated. Advanced fields (user model, redirects) stay in the config file.',
+    'config_guide_title' => 'Configuration Guide',
+    'config_guide_intro' => 'Toggle MFA per account type below and save — changes take effect immediately, no rebuild or migration needed. Settings are stored in the database (update-safe).',
+    'config_guide_enable' => 'Enabled: turn MFA on for this account type. When off, MFA is not requested for its users.',
+    'config_guide_forced' => 'Forced: require every user of this account type to set up MFA before they can continue; leave off to make it optional.',
+    'config_guide_qr' => 'QR Code Size: pixel size of the setup QR code (default 200).',
+    'config_guide_recovery' => 'Recovery Codes Count: number of one-time backup codes generated per user (default 8).',
+    'config_guide_window' => 'Time Window: allowed clock-drift tolerance in 30-second steps (1 = ±30s). Increase only if users report code mismatches.',
     'select_guard' => 'Select Guard',
     'load_users' => 'Load Users',
     'name' => 'Name',
@@ -95,6 +108,9 @@ return [
     'reset_mfa' => 'Reset MFA',
     'reset_mfa_confirm' => 'Are you sure you want to reset MFA for this user?',
     'mfa_reset_successfully' => 'MFA has been reset successfully',
+    'mfa_pending' => 'Pending setup',
+    'not_setup' => 'Not setup',
+    'no_available_guards' => 'No account type is available to manage.',
     
     // Messages
     'mfa_enabled_successfully' => 'MFA has been enabled successfully',

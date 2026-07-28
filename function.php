@@ -14,7 +14,9 @@ if (!function_exists('mfa_is_user_enrolled')) {
             return false;
         }
 
-        $guardConfig = config('Plugins/MFA.guards.' . $guard);
+        // Use the effective config (file defaults ⊕ DB overrides), same as every
+        // other consumer, instead of reading config() directly.
+        $guardConfig = mfa_get_guard_config($guard);
         if (!$guardConfig) {
             return false;
         }
@@ -67,16 +69,124 @@ if (!function_exists('mfa_clear_verified')) {
     }
 }
 
+if (!function_exists('mfa_setting_fields')) {
+    /**
+     * The per-guard settings a site owner may edit from the admin screen.
+     *
+     * WHY: only these user-facing fields are overlaid from the DB; dev-level
+     * fields (model, redirect_*) stay in config.php as package defaults.
+     *
+     * @return array<int, string>
+     */
+    function mfa_setting_fields()
+    {
+        return ['enabled', 'forced', 'qr_code_size', 'recovery_codes_count', 'window'];
+    }
+}
+
+if (!function_exists('mfa_setting_overrides')) {
+    /**
+     * User-set guard overrides stored in `admin_config` (code `MFA_config`).
+     *
+     * WHY: config.php is package-owned and gets overwritten on 1-click update
+     * (ADR plugin-manager_extension-update-flow #7). Storing the site owner's
+     * choices in admin_config — which the update flow preserves — is what keeps
+     * them from being reset. Returns [guard => [field => value]].
+     *
+     * WHY not statically cached: a Livewire save() and the subsequent re-render
+     * run in one PHP request; a static cache would show stale values right after
+     * saving. The lookup is a single indexed row — cheap enough to read live.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    function mfa_setting_overrides()
+    {
+        $row = \GP247\Core\Models\AdminConfig::where('group', 'Plugins')
+            ->where('key', 'MFA_config')
+            ->first();
+
+        $decoded = $row ? json_decode((string) $row->value, true) : null;
+
+        return is_array($decoded) ? $decoded : [];
+    }
+}
+
+if (!function_exists('mfa_effective_guards')) {
+    /**
+     * Effective guard config = file defaults ⊕ DB overrides (per guard).
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    function mfa_effective_guards()
+    {
+        $defaults = (array) config('Plugins/MFA.guards', []);
+        $overrides = mfa_setting_overrides();
+
+        foreach ($defaults as $guard => $conf) {
+            if (isset($overrides[$guard]) && is_array($overrides[$guard])) {
+                // Only the whitelisted user-facing fields are overlaid.
+                foreach (mfa_setting_fields() as $field) {
+                    if (array_key_exists($field, $overrides[$guard])) {
+                        $defaults[$guard][$field] = $overrides[$guard][$field];
+                    }
+                }
+            }
+        }
+
+        return $defaults;
+    }
+}
+
 if (!function_exists('mfa_get_guard_config')) {
     /**
-     * Get MFA configuration for a specific guard
+     * Get effective MFA configuration for a specific guard (file ⊕ DB override).
      *
      * @param string $guard
      * @return array|null
      */
     function mfa_get_guard_config($guard)
     {
-        return config('Plugins/MFA.guards.' . $guard);
+        $guards = mfa_effective_guards();
+        return $guards[$guard] ?? null;
+    }
+}
+
+if (!function_exists('mfa_save_guard_settings')) {
+    /**
+     * Persist per-guard user settings to `admin_config` (code `MFA_config`),
+     * keeping only the whitelisted fields for guards that exist in config.php.
+     *
+     * @param array<string, array<string, mixed>> $settings guard => [field => value]
+     * @return void
+     */
+    function mfa_save_guard_settings(array $settings)
+    {
+        $defaults = (array) config('Plugins/MFA.guards', []);
+        $clean = [];
+
+        foreach ($settings as $guard => $values) {
+            if (!isset($defaults[$guard]) || !is_array($values)) {
+                continue;
+            }
+            $row = [];
+            foreach (mfa_setting_fields() as $field) {
+                if (array_key_exists($field, $values)) {
+                    $row[$field] = $values[$field];
+                }
+            }
+            if ($row !== []) {
+                $clean[$guard] = $row;
+            }
+        }
+
+        \GP247\Core\Models\AdminConfig::updateOrCreate(
+            ['group' => 'Plugins', 'key' => 'MFA_config'],
+            [
+                'code' => 'MFA_config',
+                'store_id' => GP247_STORE_ID_GLOBAL,
+                'value' => json_encode($clean),
+            ]
+        );
     }
 }
 
