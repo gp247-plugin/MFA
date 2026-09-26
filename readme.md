@@ -47,7 +47,7 @@ composer require bacon/bacon-qr-code
 
 ### Step 2: Install the plugin
 
-There are 3 methods to install the plugin:
+There are 4 methods to install the plugin:
 
 #### Method 1: Install via Online Library
 
@@ -82,6 +82,27 @@ In case you encounter difficulties importing the zip file (e.g. upload errors, t
 3. Access Admin Panel > Extensions > Plugins
 4. In the default "Local storage" tab, find "MFA" and click "Install"
 5. Click "Enable" to activate the plugin
+
+#### Method 4: Install from the command line (CLI, gp247 3.x)
+
+Since gp247 3.x you can download **MFA** from the GP247 library and install it straight from the command line, without opening the admin. **Step 1 must be done first** (`composer require pragmarx/google2fa bacon/bacon-qr-code`), otherwise the command stops because the packages are missing. Open a terminal in the website's root folder and run:
+
+```bash
+# 1) Once per website: register the (free) API License that connects the site to the GP247 library
+php artisan gp247:ext-register-license
+
+# 2) Download the plugin from the library and install it
+php artisan gp247:ext-install --type=plugin --key=MFA
+```
+
+- Before step 1, make sure `APP_URL` in `.env` is the website's **real domain** (not `http://localhost`) — the license is bound to that domain.
+- Once installed, the plugin is **enabled** and caches are refreshed automatically; you no longer need to click Install/Enable in the admin.
+- The command checks the requirements declared in `gp247.json` (core version, composer packages, required plugins) and stops with a clear message if something is missing (e.g. `pragmarx/google2fa` or `bacon/bacon-qr-code` is not installed).
+- If the folder `app/GP247/Plugins/MFA` is already on the server (copied manually or shipped with the installer), the command **installs it in place** instead of downloading it again.
+- The command refuses a plugin that is already installed. To move to a newer version, run `php artisan gp247:ext-update --type=plugin --key=MFA`.
+- Append `--json` to get machine-readable output (for scripts/CI).
+- The post-install configuration steps below (**Step 3**) still apply.
+- More: [Installing Plugins & Templates](https://github.com/gp247net/gp247-docs/blob/main/extension/install-extension.md) · [Command reference](https://github.com/gp247net/gp247-docs/blob/main/system/command-line-reference.md).
 
 **Reference**: [Guide to Installing the Extension](https://gp247.net/en/docs/user-guide-extension/guide-to-installing-the-extension.html)
 

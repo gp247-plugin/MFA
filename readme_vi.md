@@ -49,7 +49,7 @@ composer require bacon/bacon-qr-code
 
 ### Bước 2: Cài đặt plugin
 
-Có 3 phương pháp cài đặt plugin:
+Có 4 phương pháp cài đặt plugin:
 
 #### Phương pháp 1: Cài đặt từ thư viện trực tuyến
 
@@ -84,6 +84,27 @@ Trong trường hợp gặp khó khăn khi import file zip (lỗi upload, vấn 
 3. Truy cập Admin Panel > Extensions > Plugins
 4. Trong tab "Local storage" mặc định, tìm "MFA" và click "Install"
 5. Click "Enable" để kích hoạt plugin
+
+#### Phương pháp 4: Cài bằng dòng lệnh (CLI, gp247 3.x)
+
+Từ gp247 3.x, bạn có thể tải **MFA** từ thư viện GP247 và cài ngay bằng dòng lệnh mà không cần mở admin. **Bắt buộc làm Bước 1 trước** (`composer require pragmarx/google2fa bacon/bacon-qr-code`), nếu không lệnh sẽ dừng vì thiếu gói. Mở Terminal tại thư mục gốc website rồi chạy:
+
+```bash
+# 1) Chỉ làm 1 lần cho mỗi website: đăng ký API License (miễn phí) để kết nối thư viện GP247
+php artisan gp247:ext-register-license
+
+# 2) Tải plugin từ thư viện và cài
+php artisan gp247:ext-install --type=plugin --key=MFA
+```
+
+- Trước bước 1, kiểm tra `APP_URL` trong `.env` là **domain thật** của website (không để `http://localhost`), vì license được gắn với domain này.
+- Cài xong, plugin được **bật sẵn** và cache tự làm mới, bạn không cần nhấn Install/Enable trong admin nữa.
+- Lệnh tự kiểm tra điều kiện khai báo trong `gp247.json` (phiên bản core, gói composer, plugin phụ thuộc). Nếu thiếu, lệnh dừng lại và báo rõ thiếu gì (ví dụ chưa cài `pragmarx/google2fa` hoặc `bacon/bacon-qr-code`).
+- Nếu thư mục `app/GP247/Plugins/MFA` đã có sẵn trên máy (chép thủ công hoặc có sẵn theo bộ cài), lệnh sẽ **cài tại chỗ**, không tải lại.
+- Nếu plugin đã được cài, lệnh sẽ từ chối. Để lên bản mới, chạy `php artisan gp247:ext-update --type=plugin --key=MFA`.
+- Thêm `--json` vào cuối lệnh để nhận kết quả dạng máy đọc được (dùng cho script/CI).
+- Các bước cấu hình sau khi cài bên dưới (**Bước 3**) vẫn giữ nguyên.
+- Chi tiết: [Hướng dẫn cài đặt Plugin & Template](https://github.com/gp247net/gp247-docs/blob/main/extension/install-extension_vi.md) · [Tra cứu lệnh](https://github.com/gp247net/gp247-docs/blob/main/system/command-line-reference_vi.md).
 
 **Tham khảo**: [Hướng dẫn cài đặt Extension](https://gp247.net/vi/docs/user-guide-extension/guide-to-installing-the-extension.html)
 
