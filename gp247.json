@@ -7,7 +7,7 @@
     "configGroup": "Plugins",
     "configCode": "Security",
     "configKey": "MFA",
-    "version": "2.2.2",
+    "version": "2.2.3",
     "requireCore": ["2.1","3.0","3.1"],
     "requireUpdateFrom": "2.1",
     "requireComposerPackages": ["pragmarx/google2fa", "bacon/bacon-qr-code"],

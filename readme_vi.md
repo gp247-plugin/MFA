@@ -1,3 +1,5 @@
+> 🌐 **Ngôn ngữ:** 🇻🇳 Tiếng Việt (hiện tại) · [🇬🇧 English](./readme.md) · [🇯🇵 日本語](./readme_ja.md)
+
 # Plugin MFA (Multi-Factor Authentication) cho GP247
 
 ## Tổng quan
