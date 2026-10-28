@@ -77,6 +77,21 @@ class TwoFactorHelper
     }
 
     /**
+     * Verify a code only for a time step newer than $lastTimestep (replay protection).
+     *
+     * @param string $secret
+     * @param string $code
+     * @param int    $lastTimestep Last accepted time step (0 = none).
+     * @param int    $window
+     * @return int|false The accepted time step, or false.
+     */
+    public function verifyCodeNewer($secret, $code, $lastTimestep, $window = 1)
+    {
+        $step = $this->google2fa->verifyKeyNewer($secret, $code, (int) $lastTimestep, $window);
+        return is_int($step) ? $step : false;
+    }
+
+    /**
      * Get current timestamp
      *
      * @return int

@@ -24,6 +24,7 @@ Plugin MFA cung cấp xác thực 2 lớp (Two-Factor Authentication) cho hệ t
 - ✅ Quản lý MFA từ Admin panel
 - ✅ Thống kê tỷ lệ sử dụng MFA theo guard
 - ✅ Có thể bắt buộc MFA cho từng guard
+- ✅ Áp cả cho đăng nhập REST API v2 của khách và quản trị (từ 2.3.0, cần gp247/core 3.6)
 - ✅ Giao diện thân thiện và responsive
 - ✅ Đa ngôn ngữ (Tiếng Việt, Tiếng Anh)
 
@@ -447,6 +448,38 @@ Access to Setup    │
        └───────────┘
 ```
 
+## MFA cho ứng dụng dùng REST API (v2)
+
+> ℹ️ **Có từ:** MFA 2.3.0 · cần gp247/core 3.6.0 (gp247/shop 3.4.0 cho API khách)
+
+Khi plugin đang bật, người dùng **đã kích hoạt MFA** (guard `customer` hoặc `admin` đang bật) cũng phải nhập mã khi đăng nhập
+qua REST API v2 — app di động hay app quản trị không còn là đường vòng né MFA. Plugin tự đăng ký với core, không cần cấu hình thêm.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant API as GP247 API v2
+    App->>API: POST login (email/username + mật khẩu)
+    API-->>App: 401 challenge_required + ticket (method: totp)
+    App->>API: POST login/challenge (ticket + code 6 số hoặc recovery_code)
+    API-->>App: 200 access_token (+ refresh_token nếu with_refresh)
+```
+
+| Trường gửi lên `login/challenge` | Ý nghĩa |
+| --- | --- |
+| `ticket` | Vé nhận được ở bước `login` (dùng một lần, hết hạn sau 5 phút) |
+| `code` | Mã 6 số trong ứng dụng xác thực |
+| `recovery_code` | Thay cho `code` khi mất thiết bị: một mã khôi phục 8 ký tự (dùng xong là mất) |
+
+- Một mã 6 số đã dùng thành công qua API **không dùng lại được** trong khung thời gian của nó.
+- Guard đặt **bắt buộc MFA** mà tài khoản **chưa kích hoạt**: API trả `challenge_required` với `method: "setup_required"` và
+  không thể hoàn tất — người dùng vào website bật MFA trước, sau đó đăng nhập app như trên.
+- Tài khoản không bật MFA, hoặc guard đang tắt: đăng nhập API như bình thường.
+- API v1 không có bước nhập mã: tài khoản đã bật MFA đăng nhập v1 nhận `401 challenge_required` — hãy dùng v2.
+- Site chạy gp247/core cũ hơn 3.6: plugin vẫn bảo vệ đăng nhập website như trước, chưa áp cho API.
+
+Chi tiết phía API: [Giới thiệu API GP247 — mục 10.4](https://github.com/gp247net/gp247-docs/blob/main/api/api-introduction_vi.md).
+
 ## Tích hợp vào code
 
 ### Middleware
@@ -598,6 +631,9 @@ MIT License
 GP247 Team
 
 ## Changelog
+
+### Version 2.3.0
+- MFA cho đăng nhập REST API v2 (khách + quản trị) qua bước `login/challenge` của gp247/core 3.6: mã TOTP hoặc mã khôi phục, chống dùng lại mã, guard bắt buộc chặn API khi chưa kích hoạt
 
 ### Version 1.0
 - Initial release

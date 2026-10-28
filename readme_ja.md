@@ -24,6 +24,7 @@ MFA プラグインは、GP247 システムに二要素認証（Two-Factor Authe
 - ✅ 管理画面（Admin panel）から MFA を管理
 - ✅ guard ごとの MFA 利用率の統計
 - ✅ guard ごとに MFA を必須化可能
+- ✅ 顧客と管理者の REST API v2 サインインにも適用（2.3.0 から、gp247/core 3.6 が必要）
 - ✅ 使いやすくレスポンシブな画面
 - ✅ 多言語対応（ベトナム語、英語）
 
@@ -447,6 +448,39 @@ Access to Setup    │
        └───────────┘
 ```
 
+## REST API（v2）を使うアプリの MFA
+
+> ℹ️ **対応バージョン:** MFA 2.3.0 · gp247/core 3.6.0 が必要（顧客 API は gp247/shop 3.4.0）
+
+プラグインがオンのとき、**MFA を有効にした**ユーザー（`customer` または `admin` ガードがオン）は、REST API v2 でサインインする
+ときもコードの入力が必要です — モバイルアプリや管理アプリで MFA を回避することはできません。プラグインは core に自動で
+登録されるため、追加の設定は不要です。
+
+```mermaid
+sequenceDiagram
+    participant App as アプリ
+    participant API as GP247 API v2
+    App->>API: POST login（メール／ユーザー名 + パスワード）
+    API-->>App: 401 challenge_required + ticket（method: totp）
+    App->>API: POST login/challenge（ticket + 6 桁のコード または recovery_code）
+    API-->>App: 200 access_token（with_refresh なら + refresh_token）
+```
+
+| `login/challenge` に送る項目 | 意味 |
+| --- | --- |
+| `ticket` | `login` で受け取ったチケット（1 回限り、5 分で失効） |
+| `code` | 認証アプリの 6 桁のコード |
+| `recovery_code` | 端末を紛失したときに `code` の代わりに使う 8 文字のリカバリーコード（使うと無効） |
+
+- API で一度受け付けた 6 桁のコードは、その有効時間内に**再利用できません**。
+- **MFA を必須**にしたガードで、まだ **MFA を設定していない**アカウント：API は `method: "setup_required"` 付きの
+  `challenge_required` を返し、完了できません — ユーザーはまずウェブサイトで MFA を有効にし、その後上記の手順でアプリにサインインします。
+- MFA を有効にしていないアカウント、またはガードがオフ：API サインインは通常どおりです。
+- API v1 にはコード入力のステップがありません：MFA を有効にしたアカウントは v1 で `401 challenge_required` になります — v2 を使ってください。
+- gp247/core が 3.6 より古いサイト：プラグインはこれまでどおりウェブサイトのサインインを保護し、API にはまだ適用されません。
+
+API 側の詳細：[GP247 API の紹介 — セクション 10.4](https://github.com/gp247net/gp247-docs/blob/main/api/api-introduction_ja.md)。
+
 ## コードへの組み込み
 
 ### Middleware
@@ -598,6 +632,9 @@ MIT License
 GP247 Team
 
 ## Changelog
+
+### Version 2.3.0
+- gp247/core 3.6 の `login/challenge` ステップによる REST API v2 サインイン（顧客 + 管理者）の MFA：TOTP またはリカバリーコード、コードの再利用を防止、必須ガードでは MFA 設定まで API を拒否
 
 ### Version 1.0
 - 初回リリース

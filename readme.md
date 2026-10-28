@@ -22,6 +22,7 @@ The MFA Plugin provides Two-Factor Authentication for GP247 system, enhancing us
 - ✅ MFA management from Admin panel
 - ✅ Usage statistics by guard
 - ✅ Optional forced MFA per guard
+- ✅ Also applies to REST API v2 sign-in of customers and admins (since 2.3.0, needs gp247/core 3.6)
 - ✅ Responsive and user-friendly interface
 - ✅ Multi-language support (Vietnamese, English)
 
@@ -445,6 +446,39 @@ Access to Setup    │
        └───────────┘
 ```
 
+## MFA for apps using the REST API (v2)
+
+> ℹ️ **Available since:** MFA 2.3.0 · needs gp247/core 3.6.0 (gp247/shop 3.4.0 for the customer API)
+
+While the plugin is on, users who **turned MFA on** (with the `customer` or `admin` guard enabled) must also enter their code when
+they sign in through REST API v2 — mobile and admin apps are no longer a way around MFA. The plugin registers itself with core;
+nothing else to configure.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant API as GP247 API v2
+    App->>API: POST login (email/username + password)
+    API-->>App: 401 challenge_required + ticket (method: totp)
+    App->>API: POST login/challenge (ticket + 6-digit code or recovery_code)
+    API-->>App: 200 access_token (+ refresh_token with with_refresh)
+```
+
+| Field sent to `login/challenge` | Meaning |
+| --- | --- |
+| `ticket` | The ticket from the `login` step (single use, expires after 5 minutes) |
+| `code` | The 6-digit code from the authenticator app |
+| `recovery_code` | Instead of `code` when the device is lost: one 8-character recovery code (used up once accepted) |
+
+- A 6-digit code accepted through the API **cannot be used again** within its time window.
+- A guard that **forces MFA**, for an account that has **not set it up yet**: the API answers `challenge_required` with
+  `method: "setup_required"` and cannot be completed — the user turns MFA on on the website first, then signs in to the app as above.
+- Accounts without MFA, or a disabled guard: API sign-in works as usual.
+- API v1 has no code step: an account with MFA on gets `401 challenge_required` on v1 — use v2.
+- Sites on gp247/core older than 3.6: the plugin keeps protecting website sign-in as before, not yet the API.
+
+API side: [GP247 API introduction — section 10.4](https://github.com/gp247net/gp247-docs/blob/main/api/api-introduction.md).
+
 ## Code Integration
 
 ### Middleware
@@ -590,6 +624,9 @@ MIT License
 GP247 Team
 
 ## Changelog
+
+### Version 2.3.0
+- MFA for REST API v2 sign-in (customer + admin) through the `login/challenge` step of gp247/core 3.6: TOTP or recovery code, code replay blocked, a forcing guard blocks the API until MFA is set up
 
 ### Version 1.0
 - Initial release

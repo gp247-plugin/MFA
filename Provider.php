@@ -43,4 +43,16 @@
      app('router')->prependMiddlewareToGroup('customer', 'mfa.verify:customer');
      app('router')->prependMiddlewareToGroup('vendor', 'mfa.verify:vendor');
      app('router')->prependMiddlewareToGroup('pmo_partner', 'mfa.verify:pmo_partner');
+
+     // REST API v2 sign-in (gp247/core 3.6+): ask enrolled customers/admins for their code.
+     // WHY interface_exists: older cores have no seam; the web protection above still applies.
+     if (interface_exists(\GP247\Core\Api\Contracts\LoginChallenge::class)) {
+         foreach (['customer', 'admin'] as $audience) {
+             $challenges = (array) config('gp247-config.api.login_challenge.' . $audience, []);
+             if (!in_array(\App\GP247\Plugins\MFA\Api\MfaLoginChallenge::class, $challenges, true)) {
+                 $challenges[] = \App\GP247\Plugins\MFA\Api\MfaLoginChallenge::class;
+                 config(['gp247-config.api.login_challenge.' . $audience => $challenges]);
+             }
+         }
+     }
  }
