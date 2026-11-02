@@ -98,6 +98,20 @@
                         </small>
                     </div>
 
+                    {{-- "Trust this device": opt-in, never on the recovery-code form (US-mfa-trusted-device) --}}
+                    @if(($trustDays ?? 0) > 0)
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" name="trust_device" value="1" id="mfa-trust-device"
+                                   data-testid="mfa-verify-trust-device">
+                            <label class="form-check-label" for="mfa-trust-device">
+                                {{ gp247_language_render('Plugins/MFA::lang.trust_device_label', ['days' => $trustDays]) }}
+                            </label>
+                            <small class="form-text text-muted d-block">
+                                {{ gp247_language_render('Plugins/MFA::lang.trust_device_hint') }}
+                            </small>
+                        </div>
+                    @endif
+
                     <div class="d-grid gap-2 mb-3">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-check"></i> {{ gp247_language_render('Plugins/MFA::lang.verify') }}

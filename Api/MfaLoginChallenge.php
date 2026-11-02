@@ -7,26 +7,19 @@ use App\GP247\Plugins\MFA\Models\TwoFactorAuth;
 use GP247\Core\Api\Contracts\LoginChallenge;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Second sign-in step of the GP247 REST API (v2) for accounts protected by this plugin:
  * after the password, the app sends the 6-digit authenticator code or a recovery code to
  * `POST login/challenge`. Registered with core's `gp247-config.api.login_challenge`
- * (customer and admin) by Provider.php when core offers the seam (gp247/core 3.6+).
+ * (customer and admin) by Provider.php (gp247/core 3.5.1+ always has the seam).
  *
  * A guard with "forced" MFA blocks API sign-in of accounts that have not set MFA up yet
  * (method `setup_required`): setting it up needs the website. A code accepted through the
- * API cannot be accepted again within its time window.
+ * API — or on the website — cannot be accepted again within its time window.
  */
 class MfaLoginChallenge implements LoginChallenge
 {
-    /** Cache key prefix of the last accepted time step, per MFA record. */
-    private const REPLAY_PREFIX = 'mfa-api-totp:';
-
-    /** How long the last accepted time step is remembered (seconds). */
-    private const REPLAY_TTL = 600;
-
     /**
      * {@inheritDoc}
      */
@@ -83,7 +76,7 @@ class MfaLoginChallenge implements LoginChallenge
 
     /**
      * Check an authenticator code; a code is accepted only for a time step newer than the
-     * last one accepted through the API.
+     * last one accepted on any channel (API or website).
      *
      * @param TwoFactorAuth $record
      * @param string        $code
@@ -92,16 +85,7 @@ class MfaLoginChallenge implements LoginChallenge
      */
     private function verifyTotp(TwoFactorAuth $record, string $code, int $window): bool
     {
-        $key = self::REPLAY_PREFIX . $record->id;
-        $step = $this->helper()->verifyCodeNewer(
-            $record->getDecryptedSecretAttribute(), $code, (int) Cache::get($key, 0), $window
-        );
-        if ($step === false) {
-            return false;
-        }
-        Cache::put($key, (int) $step, self::REPLAY_TTL);
-        $record->forceFill(['last_used_at' => now()])->save();
-        return true;
+        return $this->helper()->acceptCodeOnce($record, $code, $window);
     }
 
     /**

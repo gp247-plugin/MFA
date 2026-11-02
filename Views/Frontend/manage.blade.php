@@ -123,6 +123,55 @@
                             </div>
                         </div>
 
+                        <!-- Trusted devices (US-mfa-trusted-device-revoke) -->
+                        <div class="mt-4">
+                            <h6 class="mb-2">{{ gp247_language_render('Plugins/MFA::lang.trusted_devices') }}</h6>
+                            <p class="text-muted small">{{ gp247_language_render('Plugins/MFA::lang.trusted_devices_desc') }}</p>
+
+                            @if($trustedDevices->isEmpty())
+                                <p class="text-muted small">{{ gp247_language_render('Plugins/MFA::lang.trusted_devices_none') }}</p>
+                            @else
+                                <ul class="list-group mb-3">
+                                    @foreach($trustedDevices as $device)
+                                        <li class="list-group-item d-flex justify-content-between align-items-start gap-2"
+                                            data-testid="mfa-manage-trusted-device-row">
+                                            <div class="small">
+                                                <div class="fw-bold text-break">
+                                                    {{ \Illuminate\Support\Str::limit($device->user_agent ?: gp247_language_render('Plugins/MFA::lang.trusted_device_unknown'), 90) }}
+                                                    @if($device->matches($currentToken))
+                                                        <span class="badge bg-success">{{ gp247_language_render('Plugins/MFA::lang.trusted_device_current') }}</span>
+                                                    @endif
+                                                </div>
+                                                <div class="text-muted">
+                                                    {{ gp247_language_render('Plugins/MFA::lang.trusted_device_created') }}: {{ optional($device->created_at)->format('Y-m-d H:i') }}
+                                                    · {{ gp247_language_render('Plugins/MFA::lang.last_used') }}: {{ $device->last_used_at ? $device->last_used_at->format('Y-m-d H:i') : gp247_language_render('Plugins/MFA::lang.never_used') }}
+                                                    · {{ gp247_language_render('Plugins/MFA::lang.trusted_device_expires') }}: {{ $device->expires_at->format('Y-m-d') }}
+                                                </div>
+                                            </div>
+                                            <form action="{{ route('mfa.trusted_devices.revoke') }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="guard" value="{{ $guard }}">
+                                                <input type="hidden" name="id" value="{{ $device->id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        data-testid="mfa-manage-trusted-device-revoke">
+                                                    {{ gp247_language_render('Plugins/MFA::lang.trusted_device_revoke') }}
+                                                </button>
+                                            </form>
+                                        </li>
+                                    @endforeach
+                                </ul>
+
+                                <form action="{{ route('mfa.trusted_devices.revoke_all') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="guard" value="{{ $guard }}">
+                                    <button type="submit" class="btn btn-outline-danger"
+                                            data-testid="mfa-manage-trusted-devices-revoke-all">
+                                        <i class="fas fa-ban"></i> {{ gp247_language_render('Plugins/MFA::lang.trusted_devices_revoke_all') }}
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+
                         <!-- Disable MFA -->
                         <div class="mt-4 p-3 bg-light rounded">
                             <h6 class="text-danger mb-3">

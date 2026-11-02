@@ -4,7 +4,7 @@
 
 ## Tổng quan
 
-Plugin MFA cung cấp xác thực 2 lớp (Two-Factor Authentication) cho hệ thống GP247, tăng cường bảo mật tài khoản người dùng. Plugin hỗ trợ đa guards (customer, admin, vendor, pmo...) cho phép linh hoạt trong việc quản lý xác thực người dùng.
+Plugin MFA cung cấp xác thực 2 lớp (Two-Factor Authentication) cho hệ thống GP247, tăng cường bảo mật tài khoản người dùng. Plugin hỗ trợ đa guards (customer, admin, vendor) cho phép linh hoạt trong việc quản lý xác thực người dùng.
 
 ## Minh họa giao diện
 
@@ -18,21 +18,23 @@ Plugin MFA cung cấp xác thực 2 lớp (Two-Factor Authentication) cho hệ t
 ## Tính năng
 
 - ✅ Xác thực 2 lớp sử dụng TOTP (Time-based One-Time Password)
-- ✅ Hỗ trợ nhiều guards: customer, admin, vendor, pmo
+- ✅ Hỗ trợ nhiều guards: customer, admin, vendor (khi có plugin MultiVendor)
 - ✅ Mã QR dễ dàng quét bằng ứng dụng xác thực
 - ✅ Mã khôi phục (Recovery Codes) khi mất thiết bị
+- ✅ **Tin tưởng thiết bị**: trên máy của mình, không phải nhập mã mỗi lần đăng nhập (mật khẩu vẫn bắt buộc) — từ 2.4.0
+- ✅ Chặn dò mã: tối đa 5 lần nhập sai trong 15 phút, mã đã dùng không dùng lại được — từ 2.4.0
 - ✅ Quản lý MFA từ Admin panel
 - ✅ Thống kê tỷ lệ sử dụng MFA theo guard
 - ✅ Có thể bắt buộc MFA cho từng guard
-- ✅ Áp cả cho đăng nhập REST API v2 của khách và quản trị (từ 2.3.0, cần gp247/core 3.6)
+- ✅ Áp cả cho đăng nhập REST API v2 của khách và quản trị (từ 2.3.0)
 - ✅ Giao diện thân thiện và responsive
 - ✅ Đa ngôn ngữ (Tiếng Việt, Tiếng Anh)
 
 ## Yêu cầu hệ thống
 
-- GP247 Core >= 1.2
-- Laravel 12.x
-- PHP >= 8.2
+- gp247/core >= 3.5.1 (từ MFA 2.4.0)
+- Laravel 13.x
+- PHP >= 8.3
 - Các packages:
   - pragmarx/google2fa: ^8.0 hoặc ^9.0
   - bacon/bacon-qr-code: ^2.0 hoặc ^3.0
@@ -116,20 +118,21 @@ php artisan gp247:ext-install --type=plugin --key=MFA
 Sau khi cài đặt thành công, plugin MFA sẽ xuất hiện trong menu:
 **Admin Panel > Cấu hình hệ thống > Bảo mật > MFA**
 
-#### Cấu hình qua file config
+#### Cấu hình trên màn quản trị
 
-Để cấu hình plugin, chỉnh sửa file: `app/GP247/Plugins/MFA/config.php`
+Mở **Admin Panel > Bảo mật > MFA** và chỉnh từng guard ngay trên màn hình. Giá trị được lưu trong cơ sở dữ liệu nên **không bị mất khi cập nhật plugin**. File `app/GP247/Plugins/MFA/config.php` chỉ chứa giá trị mặc định và bị thay khi cập nhật.
 
-**Mặc định**: Plugin chỉ được kích hoạt cho guard **admin**.
+**Mặc định**: Plugin chỉ được kích hoạt cho guard **admin**. Guard **vendor** chỉ có tác dụng khi site cài plugin MultiVendor.
 
 Các tham số cấu hình cho mỗi guard:
 
 - **enabled**: `1` = bật, `0` = tắt MFA cho guard
 - **forced**: `1` = bắt buộc, `0` = tùy chọn (người dùng có thể bật/tắt MFA)
-- **model**: Model class của user
-- **qr_code_size**: Kích thước mã QR (100-500px)
-- **recovery_codes_count**: Số lượng mã khôi phục (4-20)
-- **window**: Cửa sổ thời gian cho phép (0-5, khuyến nghị 1)
+- **model**: Model class của user (chỉ trong `config.php`)
+- **qr_code_size**: Kích thước mã QR (50-1000px)
+- **recovery_codes_count**: Số lượng mã khôi phục (1-50)
+- **window**: Cửa sổ thời gian cho phép (0-10, khuyến nghị 1)
+- **trust_device_days**: Số ngày một thiết bị được tin tưởng (0-365, mặc định 30; `0` = tắt tuỳ chọn "Tin tưởng thiết bị")
 
 Ví dụ cấu hình:
 
@@ -448,9 +451,50 @@ Access to Setup    │
        └───────────┘
 ```
 
+## Tin tưởng thiết bị
+
+> ℹ️ **Có từ:** MFA 2.4.0
+
+Khi nhập mã 6 số, người dùng có thể đánh dấu **"Tin tưởng thiết bị này trong N ngày"**. Trong N ngày đó, đăng nhập lại trên
+**đúng trình duyệt ấy** chỉ cần username + mật khẩu, không phải mở ứng dụng xác thực. Tin tưởng thiết bị **không bao giờ** thay
+cho mật khẩu.
+
+```mermaid
+flowchart TD
+    A[Đăng nhập: username + mật khẩu] -->|sai| X[Dừng ở trang đăng nhập]
+    A -->|đúng| B{Trình duyệt này đã được<br/>tin tưởng cho tài khoản này<br/>và còn hạn?}
+    B -- có --> OK[Vào thẳng, không hỏi mã]
+    B -- không --> C[Nhập mã 6 số]
+    C --> D{Đánh dấu<br/>Tin tưởng thiết bị này?}
+    D -- có --> E[Ghi nhớ trình duyệt N ngày] --> OK
+    D -- không --> OK
+```
+
+- Chỉ áp cho **đúng tài khoản và đúng loại tài khoản** (khách / quản trị / vendor) đã tin tưởng. Tài khoản khác trên cùng máy vẫn phải nhập mã.
+- Mặc định không đánh dấu. **Không nên đánh dấu trên máy dùng chung hay máy công cộng.**
+- Màn đăng nhập bằng **mã khôi phục** không có lựa chọn này.
+- Người dùng xem và gỡ từng thiết bị tin tưởng (hoặc gỡ tất cả) ở **trang quản lý MFA** (`/mfa/manage/<guard>`).
+- Mọi thiết bị tin tưởng của một tài khoản **tự bị gỡ** khi: đổi mật khẩu (bằng bất kỳ cách nào), tắt MFA, quản trị viên reset MFA,
+  hoặc đăng nhập bằng mã khôi phục. Đăng xuất **không** gỡ thiết bị tin tưởng.
+- Chủ site chỉnh số ngày cho từng guard ở **Admin Panel > Bảo mật > MFA** (ô "Tin tưởng thiết bị (ngày)"). Đặt `0` để tắt; mọi thiết
+  bị đang được tin tưởng của guard đó hết tác dụng ngay.
+- Không áp cho đăng nhập REST API v2 (app dùng refresh token).
+
+**Bảo mật cookie**: thông tin tin tưởng nằm trong cookie mã hoá, `HttpOnly`, đi theo cấu hình cookie phiên của site
+(`SESSION_DOMAIN`, `SESSION_SECURE_COOKIE`, `SESSION_SAME_SITE`). Site chạy HTTPS nên đặt `SESSION_SECURE_COOKIE=true`. Cơ sở dữ liệu
+chỉ lưu bản băm của mã tin tưởng.
+
+## Giới hạn nhập mã
+
+> ℹ️ **Có từ:** MFA 2.4.0
+
+Màn nhập mã trên website cho tối đa **5 lần sai trong 15 phút** cho mỗi tài khoản (mã 6 số và mã khôi phục tính chung). Quá giới hạn,
+màn hình không kiểm mã nữa (kể cả mã đúng) và báo số phút phải chờ. Một mã 6 số đã được chấp nhận — trên website hoặc qua API — không
+dùng lại được trong khung thời gian của nó. Bộ đếm dùng cache mặc định của Laravel, chạy được trên shared hosting.
+
 ## MFA cho ứng dụng dùng REST API (v2)
 
-> ℹ️ **Có từ:** MFA 2.3.0 · cần gp247/core 3.6.0 (gp247/shop 3.4.0 cho API khách)
+> ℹ️ **Có từ:** MFA 2.3.0 · cần gp247/core 3.5.1 (gp247/shop 3.4.0 cho API khách)
 
 Khi plugin đang bật, người dùng **đã kích hoạt MFA** (guard `customer` hoặc `admin` đang bật) cũng phải nhập mã khi đăng nhập
 qua REST API v2 — app di động hay app quản trị không còn là đường vòng né MFA. Plugin tự đăng ký với core, không cần cấu hình thêm.
@@ -471,12 +515,11 @@ sequenceDiagram
 | `code` | Mã 6 số trong ứng dụng xác thực |
 | `recovery_code` | Thay cho `code` khi mất thiết bị: một mã khôi phục 8 ký tự (dùng xong là mất) |
 
-- Một mã 6 số đã dùng thành công qua API **không dùng lại được** trong khung thời gian của nó.
+- Một mã 6 số đã dùng thành công qua API (hoặc trên website) **không dùng lại được** trong khung thời gian của nó.
 - Guard đặt **bắt buộc MFA** mà tài khoản **chưa kích hoạt**: API trả `challenge_required` với `method: "setup_required"` và
   không thể hoàn tất — người dùng vào website bật MFA trước, sau đó đăng nhập app như trên.
 - Tài khoản không bật MFA, hoặc guard đang tắt: đăng nhập API như bình thường.
 - API v1 không có bước nhập mã: tài khoản đã bật MFA đăng nhập v1 nhận `401 challenge_required` — hãy dùng v2.
-- Site chạy gp247/core cũ hơn 3.6: plugin vẫn bảo vệ đăng nhập website như trước, chưa áp cho API.
 
 Chi tiết phía API: [Giới thiệu API GP247 — mục 10.4](https://github.com/gp247net/gp247-docs/blob/main/api/api-introduction_vi.md).
 
@@ -502,8 +545,8 @@ Route::group(['middleware' => ['auth:admin', 'mfa.verify:admin']], function () {
 ### Helper functions
 
 ```php
-// Kiểm tra MFA có được bật cho guard không
-if (mfa_is_enabled_for_guard('customer')) {
+// Kiểm tra MFA có được bật cho guard không (cấu hình hiệu lực: mặc định + giá trị lưu ở màn quản trị)
+if (mfa_get_guard_config('customer')['enabled'] ?? false) {
     // MFA is enabled
 }
 
@@ -512,16 +555,16 @@ if (mfa_is_user_enrolled($user, 'customer')) {
     // User has enrolled MFA
 }
 
-// Kiểm tra session đã verify MFA chưa
-if (mfa_is_verified()) {
-    // Session is verified
+// Kiểm tra tài khoản đang đăng nhập của guard đã qua MFA trong phiên này chưa (từ 2.4.0: theo guard + tài khoản)
+if (mfa_is_verified('customer', $user)) {
+    // Session is verified for this customer
 }
 
-// Đánh dấu session đã verify
-mfa_set_verified();
+// Đánh dấu tài khoản đã qua MFA trong phiên (cho guard đó)
+mfa_set_verified('customer', $user);
 
-// Xóa verify khỏi session
-mfa_clear_verified();
+// Xoá dấu của một guard (bỏ tham số = mọi guard)
+mfa_clear_verified('customer');
 
 // Tạo link đến các trang MFA
 route('mfa.setup.show', 'customer')        // /mfa/setup/customer
@@ -534,24 +577,28 @@ route('mfa.verify.show', 'customer')       // /mfa/verify/customer
 
 ```
 app/GP247/Plugins/MFA/
-├── Admin/
-│   └── AdminController.php          # Controller cho admin panel
+├── Admin/Livewire/
+│   ├── MfaDashboard.php             # Màn thống kê + cấu hình guard
+│   └── MfaUsers.php                 # Màn danh sách người dùng / reset MFA
+├── Api/
+│   └── MfaLoginChallenge.php        # Bước nhập mã cho REST API v2
 ├── Controllers/
 │   └── MFAController.php            # Controller chính cho MFA
 ├── Helpers/
 │   └── TwoFactorHelper.php          # Helper cho Google 2FA
 ├── Lang/
-│   ├── en/
-│   │   └── lang.php                 # Ngôn ngữ tiếng Anh
-│   └── vi/
-│       └── lang.php                 # Ngôn ngữ tiếng Việt
+│   ├── en/ · vi/ · ja/
+│   │   └── lang.php                 # Ngôn ngữ
 ├── Middleware/
 │   └── TwoFactorAuthentication.php # Middleware xác thực MFA
 ├── Models/
 │   ├── ExtensionModel.php           # Model cài đặt/gỡ bỏ
+│   ├── TrustedDevice.php            # Thiết bị tin tưởng
 │   └── TwoFactorAuth.php            # Model lưu trữ MFA
+├── Services/
+│   └── TrustedDeviceService.php     # Cookie + kiểm tra thiết bị tin tưởng
 ├── Views/
-│   ├── Admin.blade.php              # View admin
+│   ├── Admin/                       # View admin (Livewire)
 │   └── Frontend/
 │       ├── setup.blade.php          # View thiết lập MFA
 │       ├── verify.blade.php         # View xác thực MFA
@@ -632,8 +679,22 @@ GP247 Team
 
 ## Changelog
 
+### Version 2.4.0
+- **Tin tưởng thiết bị**: đánh dấu "Tin tưởng thiết bị này" khi nhập mã để lần sau trên trình duyệt đó chỉ cần mật khẩu (mặc định 30
+  ngày, chỉnh 0–365 theo guard). Tự gỡ khi đổi mật khẩu, tắt MFA, quản trị viên reset hoặc dùng mã khôi phục; người dùng tự gỡ ở trang quản lý MFA
+- Tăng cường bảo mật: trạng thái "đã nhập mã" trong phiên gắn với đúng tài khoản; màn nhập mã trên website giới hạn 5 lần sai / 15 phút
+  và không nhận lại mã đã dùng. Nên cập nhật
+- Guard `vendor` dùng đúng model của plugin MultiVendor; bỏ guard mẫu `pmo_partner` và khoá `session_lifetime` không còn dùng
+- Yêu cầu gp247/core 3.5.1 trở lên
+
+**Cần làm khi cập nhật**
+- Sao lưu cơ sở dữ liệu (bảng `two_factor_auth`), rồi cập nhật plugin và áp dụng cập nhật dữ liệu (`php artisan gp247:update`, hoặc nút
+  "Áp dụng" ở màn Extension) để tạo bảng thiết bị tin tưởng.
+- Người dùng đang đăng nhập (đã bật MFA) sẽ được hỏi mã **một lần** sau khi cập nhật — đây là hành vi mong đợi.
+- Site HTTPS nên đặt `SESSION_SECURE_COOKIE=true`.
+
 ### Version 2.3.0
-- MFA cho đăng nhập REST API v2 (khách + quản trị) qua bước `login/challenge` của gp247/core 3.6: mã TOTP hoặc mã khôi phục, chống dùng lại mã, guard bắt buộc chặn API khi chưa kích hoạt
+- MFA cho đăng nhập REST API v2 (khách + quản trị) qua bước `login/challenge` của gp247/core: mã TOTP hoặc mã khôi phục, chống dùng lại mã, guard bắt buộc chặn API khi chưa kích hoạt
 
 ### Version 1.0
 - Initial release

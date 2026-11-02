@@ -4,8 +4,8 @@
     MFA adoption per guard (stat cards) + guard configuration as declared in
     config.php. UI text via gp247_language_render; dark-mode aware.
 
-    @aidlc-unit plugin-mfa
-    @aidlc-story GP247-v2-compat
+    @aidlc-unit mfa-plugin
+    @aidlc-story GP247-v2-compat, US-mfa-trusted-device
 
     Variables: $guardsConfig (guard key => settings), $stats (guard key => metrics).
 --}}
@@ -86,7 +86,7 @@
                                 wire:model.live="settings.{{ $guard }}.forced" value="1" />
                         </div>
 
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <x-gp247::input type="number" min="50" max="1000"
                                 :label="gp247_language_render('Plugins/MFA::lang.qr_code_size')"
                                 wire:model="settings.{{ $guard }}.qr_code_size"
@@ -99,6 +99,11 @@
                                 :label="gp247_language_render('Plugins/MFA::lang.window')"
                                 wire:model="settings.{{ $guard }}.window"
                                 :error="$errors->first('settings.'.$guard.'.window')" />
+                            <x-gp247::input type="number" min="0" max="365"
+                                :label="gp247_language_render('Plugins/MFA::lang.trust_device_days')"
+                                wire:model="settings.{{ $guard }}.trust_device_days"
+                                data-testid="mfa-dashboard-trust-device-days"
+                                :error="$errors->first('settings.'.$guard.'.trust_device_days')" />
                         </div>
                     </div>
                 @endforeach
@@ -112,7 +117,7 @@
             {{ gp247_language_render('Plugins/MFA::lang.config_guide_intro') }}
         </p>
         <ul class="space-y-2.5 text-sm text-gray-700 dark:text-gray-200">
-            @foreach(['config_guide_enable', 'config_guide_forced', 'config_guide_qr', 'config_guide_recovery', 'config_guide_window'] as $step)
+            @foreach(['config_guide_enable', 'config_guide_forced', 'config_guide_qr', 'config_guide_recovery', 'config_guide_window', 'config_guide_trust_device'] as $step)
                 <li class="flex gap-2">
                     <i class="fas fa-circle-check mt-0.5 text-emerald-500"></i>
                     <span>{{ gp247_language_render('Plugins/MFA::lang.' . $step) }}</span>

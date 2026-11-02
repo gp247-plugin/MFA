@@ -37,6 +37,13 @@ if(gp247_extension_check_active($config['configGroup'], $config['configKey'])) {
             Route::post('disable', 'MFAController@disable')
                 ->name('mfa.disable');
 
+            // Trusted devices ("trust this device" — skips the code, never the password)
+            Route::post('trusted-devices/revoke', 'MFAController@revokeTrustedDevice')
+                ->name('mfa.trusted_devices.revoke');
+
+            Route::post('trusted-devices/revoke-all', 'MFAController@revokeAllTrustedDevices')
+                ->name('mfa.trusted_devices.revoke_all');
+
             // Recovery codes
             Route::get('recovery-codes/{guard}', 'MFAController@showRecoveryCodes')
                 ->name('mfa.recovery_codes');

@@ -30,42 +30,90 @@ if (!function_exists('mfa_is_user_enrolled')) {
     }
 }
 
+if (!function_exists('mfa_verified_marks')) {
+    /**
+     * The session's MFA marks: [guard => user id] for every guard verified in it.
+     *
+     * WHY an array: up to 2.3.x the mark was a single `true` shared by every guard,
+     * so passing MFA as an admin unlocked a customer signed in on the same browser.
+     * A non-array value (that legacy `true`) counts as "nothing verified".
+     *
+     * @return array<string, string>
+     *
+     * @aidlc-unit mfa-plugin
+     * @aidlc-story US-mfa-verified-session-per-guard
+     */
+    function mfa_verified_marks()
+    {
+        $marks = session(config('Plugins/MFA.session_key', 'mfa_verified'));
+
+        return is_array($marks) ? $marks : [];
+    }
+}
+
 if (!function_exists('mfa_is_verified')) {
     /**
-     * Check if current session has verified MFA
+     * Whether $user passed MFA for $guard in the current session.
      *
+     * @param string|null $guard Guard key; null = default_guard.
+     * @param mixed       $user  Signed-in user of that guard; null = Auth::guard($guard)->user().
      * @return bool
+     *
+     * @aidlc-unit mfa-plugin
+     * @aidlc-story US-mfa-verified-session-per-guard
      */
-    function mfa_is_verified()
+    function mfa_is_verified($guard = null, $user = null)
     {
-        $sessionKey = config('Plugins/MFA.session_key', 'mfa_verified');
-        return session($sessionKey, false) === true;
+        $guard = $guard ?? config('Plugins/MFA.default_guard', 'customer');
+        $user = $user ?? \Illuminate\Support\Facades\Auth::guard($guard)->user();
+        if (!$user) {
+            return false;
+        }
+        $marks = mfa_verified_marks();
+
+        return isset($marks[$guard]) && (string) $marks[$guard] === (string) $user->getAuthIdentifier();
     }
 }
 
 if (!function_exists('mfa_set_verified')) {
     /**
-     * Mark current session as MFA verified
+     * Mark that $user passed MFA for $guard in the current session.
      *
+     * @param string $guard
+     * @param mixed  $user
      * @return void
+     *
+     * @aidlc-unit mfa-plugin
+     * @aidlc-story US-mfa-verified-session-per-guard
      */
-    function mfa_set_verified()
+    function mfa_set_verified($guard, $user)
     {
-        $sessionKey = config('Plugins/MFA.session_key', 'mfa_verified');
-        session([$sessionKey => true]);
+        $marks = mfa_verified_marks();
+        $marks[$guard] = (string) $user->getAuthIdentifier();
+        session([config('Plugins/MFA.session_key', 'mfa_verified') => $marks]);
     }
 }
 
 if (!function_exists('mfa_clear_verified')) {
     /**
-     * Clear MFA verification from session
+     * Forget the MFA mark of one guard (null = every guard).
      *
+     * @param string|null $guard
      * @return void
+     *
+     * @aidlc-unit mfa-plugin
+     * @aidlc-story US-mfa-verified-session-per-guard
      */
-    function mfa_clear_verified()
+    function mfa_clear_verified($guard = null)
     {
         $sessionKey = config('Plugins/MFA.session_key', 'mfa_verified');
-        session()->forget($sessionKey);
+        if ($guard === null) {
+            session()->forget($sessionKey);
+            return;
+        }
+        $marks = mfa_verified_marks();
+        unset($marks[$guard]);
+        session([$sessionKey => $marks]);
     }
 }
 
@@ -80,7 +128,7 @@ if (!function_exists('mfa_setting_fields')) {
      */
     function mfa_setting_fields()
     {
-        return ['enabled', 'forced', 'qr_code_size', 'recovery_codes_count', 'window'];
+        return ['enabled', 'forced', 'qr_code_size', 'recovery_codes_count', 'window', 'trust_device_days'];
     }
 }
 

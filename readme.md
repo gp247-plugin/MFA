@@ -4,7 +4,7 @@
 
 ## Overview
 
-The MFA Plugin provides Two-Factor Authentication for GP247 system, enhancing user account security. The plugin supports multiple guards (customer, admin, vendor, pmo...) for flexible user authentication management.
+The MFA Plugin provides Two-Factor Authentication for GP247 system, enhancing user account security. The plugin supports multiple guards (customer, admin, vendor) for flexible user authentication management.
 
 <p align="center">
   <img src="https://static.gp247.net/product/mfa-user.jpg" alt="GP247 User Interface - Register/Manage MFA" />
@@ -16,21 +16,23 @@ The MFA Plugin provides Two-Factor Authentication for GP247 system, enhancing us
 ## Features
 
 - ✅ Two-factor authentication using TOTP (Time-based One-Time Password)
-- ✅ Multiple guards support: customer, admin, vendor, pmo
+- ✅ Multiple guards support: customer, admin, vendor (with the MultiVendor plugin)
 - ✅ Easy-to-scan QR codes with authenticator apps
 - ✅ Recovery codes for device loss scenarios
+- ✅ **Trusted devices**: no code at every sign-in on your own computer (the password is still required) — since 2.4.0
+- ✅ Code guessing blocked: at most 5 wrong codes in 15 minutes, a used code cannot be reused — since 2.4.0
 - ✅ MFA management from Admin panel
 - ✅ Usage statistics by guard
 - ✅ Optional forced MFA per guard
-- ✅ Also applies to REST API v2 sign-in of customers and admins (since 2.3.0, needs gp247/core 3.6)
+- ✅ Also applies to REST API v2 sign-in of customers and admins (since 2.3.0)
 - ✅ Responsive and user-friendly interface
 - ✅ Multi-language support (Vietnamese, English)
 
 ## System Requirements
 
-- GP247 Core >= 1.2
-- Laravel 12.x
-- PHP >= 8.2
+- gp247/core >= 3.5.1 (since MFA 2.4.0)
+- Laravel 13.x
+- PHP >= 8.3
 - Required packages:
   - pragmarx/google2fa: ^8.0 or ^9.0
   - bacon/bacon-qr-code: ^2.0 or ^3.0
@@ -114,20 +116,22 @@ php artisan gp247:ext-install --type=plugin --key=MFA
 After successful installation, the MFA plugin will appear in the menu:
 **Admin Panel > System Configuration > Security > MFA**
 
-#### Configuration via config file
+#### Configuration on the admin screen
 
-To configure the plugin, edit the file: `app/GP247/Plugins/MFA/config.php`
+Open **Admin Panel > Security > MFA** and edit each guard on the screen. Values are stored in the database, so they **survive plugin
+updates**. The file `app/GP247/Plugins/MFA/config.php` only holds defaults and is replaced on update.
 
-**Default**: The plugin is only enabled for the **admin** guard.
+**Default**: The plugin is only enabled for the **admin** guard. The **vendor** guard only applies when the site has the MultiVendor plugin.
 
 Configuration parameters for each guard:
 
 - **enabled**: `1` = enabled, `0` = disabled MFA for the guard
 - **forced**: `1` = mandatory, `0` = optional (users can enable/disable MFA)
-- **model**: User model class
-- **qr_code_size**: QR code size (100-500px)
-- **recovery_codes_count**: Number of recovery codes (4-20)
-- **window**: Time window allowance (0-5, recommended 1)
+- **model**: User model class (in `config.php` only)
+- **qr_code_size**: QR code size (50-1000px)
+- **recovery_codes_count**: Number of recovery codes (1-50)
+- **window**: Time window allowance (0-10, recommended 1)
+- **trust_device_days**: How many days a device stays trusted (0-365, default 30; `0` = turns the "Trust this device" option off)
 
 Example configuration:
 
@@ -446,9 +450,49 @@ Access to Setup    │
        └───────────┘
 ```
 
+## Trusted devices
+
+> ℹ️ **Available since:** MFA 2.4.0
+
+When typing the 6-digit code, the user can tick **"Trust this device for N days"**. For those N days, signing in again on **that same
+browser** only needs username + password — no authenticator app. A trusted device **never** replaces the password.
+
+```mermaid
+flowchart TD
+    A[Sign in: username + password] -->|wrong| X[Stay on the sign-in page]
+    A -->|right| B{This browser trusted<br/>for this account<br/>and not expired?}
+    B -- yes --> OK[Straight in, no code]
+    B -- no --> C[Enter the 6-digit code]
+    C --> D{Ticked<br/>Trust this device?}
+    D -- yes --> E[Remember this browser for N days] --> OK
+    D -- no --> OK
+```
+
+- Applies only to **the same account and the same account type** (customer / admin / vendor) that trusted it. Other accounts on the same computer still need the code.
+- Not ticked by default. **Do not tick it on a shared or public computer.**
+- The **recovery code** form does not offer this option.
+- Users see and remove trusted devices one by one (or all at once) on the **MFA manage page** (`/mfa/manage/<guard>`).
+- Every trusted device of an account is **removed automatically** when the password changes (any way), MFA is turned off, an
+  administrator resets MFA, or the user signs in with a recovery code. Signing out does **not** remove trusted devices.
+- The site owner sets the number of days per guard in **Admin Panel > Security > MFA** ("Trust device (days)"). `0` turns it off, and
+  every device trusted for that guard stops working at once.
+- Does not apply to REST API v2 sign-in (apps use refresh tokens).
+
+**Cookie security**: the trust lives in an encrypted, `HttpOnly` cookie that follows the site's session cookie settings
+(`SESSION_DOMAIN`, `SESSION_SECURE_COOKIE`, `SESSION_SAME_SITE`). HTTPS sites should set `SESSION_SECURE_COOKIE=true`. The database
+only stores a hash of the trust token.
+
+## Code entry limit
+
+> ℹ️ **Available since:** MFA 2.4.0
+
+The website code screen allows at most **5 wrong codes in 15 minutes** per account (6-digit codes and recovery codes count together).
+Past the limit it stops checking codes (even the right one) and says how many minutes to wait. A 6-digit code that was accepted — on the
+website or through the API — cannot be used again within its time window. The counter uses Laravel's default cache and works on shared hosting.
+
 ## MFA for apps using the REST API (v2)
 
-> ℹ️ **Available since:** MFA 2.3.0 · needs gp247/core 3.6.0 (gp247/shop 3.4.0 for the customer API)
+> ℹ️ **Available since:** MFA 2.3.0 · needs gp247/core 3.5.1 (gp247/shop 3.4.0 for the customer API)
 
 While the plugin is on, users who **turned MFA on** (with the `customer` or `admin` guard enabled) must also enter their code when
 they sign in through REST API v2 — mobile and admin apps are no longer a way around MFA. The plugin registers itself with core;
@@ -470,12 +514,11 @@ sequenceDiagram
 | `code` | The 6-digit code from the authenticator app |
 | `recovery_code` | Instead of `code` when the device is lost: one 8-character recovery code (used up once accepted) |
 
-- A 6-digit code accepted through the API **cannot be used again** within its time window.
+- A 6-digit code accepted through the API (or on the website) **cannot be used again** within its time window.
 - A guard that **forces MFA**, for an account that has **not set it up yet**: the API answers `challenge_required` with
   `method: "setup_required"` and cannot be completed — the user turns MFA on on the website first, then signs in to the app as above.
 - Accounts without MFA, or a disabled guard: API sign-in works as usual.
 - API v1 has no code step: an account with MFA on gets `401 challenge_required` on v1 — use v2.
-- Sites on gp247/core older than 3.6: the plugin keeps protecting website sign-in as before, not yet the API.
 
 API side: [GP247 API introduction — section 10.4](https://github.com/gp247net/gp247-docs/blob/main/api/api-introduction.md).
 
@@ -501,8 +544,8 @@ Route::group(['middleware' => ['auth:admin', 'mfa.verify:admin']], function () {
 ### Helper Functions
 
 ```php
-// Check if MFA is enabled for guard
-if (mfa_is_enabled_for_guard('customer')) {
+// Check if MFA is enabled for guard (effective config: defaults + values saved on the admin screen)
+if (mfa_get_guard_config('customer')['enabled'] ?? false) {
     // MFA is enabled
 }
 
@@ -511,40 +554,44 @@ if (mfa_is_user_enrolled($user, 'customer')) {
     // User has enrolled MFA
 }
 
-// Check if session is MFA verified
-if (mfa_is_verified()) {
-    // Session is verified
+// Check if the signed-in account of a guard passed MFA in this session (since 2.4.0: per guard + account)
+if (mfa_is_verified('customer', $user)) {
+    // Session is verified for this customer
 }
 
-// Mark session as verified
-mfa_set_verified();
+// Mark that the account passed MFA in this session (for that guard)
+mfa_set_verified('customer', $user);
 
-// Clear verification from session
-mfa_clear_verified();
+// Clear the mark of one guard (no argument = every guard)
+mfa_clear_verified('customer');
 ```
 
 ## Directory Structure
 
 ```
 app/GP247/Plugins/MFA/
-├── Admin/
-│   └── AdminController.php          # Admin panel controller
+├── Admin/Livewire/
+│   ├── MfaDashboard.php             # Statistics + guard settings screen
+│   └── MfaUsers.php                 # User list / MFA reset screen
+├── Api/
+│   └── MfaLoginChallenge.php        # Code step for REST API v2
 ├── Controllers/
 │   └── MFAController.php            # Main MFA controller
 ├── Helpers/
 │   └── TwoFactorHelper.php          # Google 2FA helper
 ├── Lang/
-│   ├── en/
-│   │   └── lang.php                 # English translations
-│   └── vi/
-│       └── lang.php                 # Vietnamese translations
+│   ├── en/ · vi/ · ja/
+│   │   └── lang.php                 # Translations
 ├── Middleware/
 │   └── TwoFactorAuthentication.php # MFA verification middleware
 ├── Models/
 │   ├── ExtensionModel.php           # Install/uninstall model
+│   ├── TrustedDevice.php            # Trusted devices
 │   └── TwoFactorAuth.php            # MFA storage model
+├── Services/
+│   └── TrustedDeviceService.php     # Trusted-device cookie + check
 ├── Views/
-│   ├── Admin.blade.php              # Admin view
+│   ├── Admin/                       # Admin views (Livewire)
 │   └── Frontend/
 │       ├── setup.blade.php          # MFA setup view
 │       ├── verify.blade.php         # MFA verification view
@@ -625,8 +672,22 @@ GP247 Team
 
 ## Changelog
 
+### Version 2.4.0
+- **Trusted devices**: tick "Trust this device" when entering the code so that browser only needs the password next time (default 30
+  days, 0–365 per guard). Removed automatically on a password change, MFA off, an admin reset or a recovery-code sign-in; users remove them on the MFA manage page
+- Security hardening: the "code entered" state of a session is bound to the right account; the website code screen allows 5 wrong codes
+  per 15 minutes and does not accept a used code again. Updating is recommended
+- The `vendor` guard uses the MultiVendor plugin's model; the sample `pmo_partner` guard and the unused `session_lifetime` key are removed
+- Requires gp247/core 3.5.1 or later
+
+**What to do when updating**
+- Back up the database (table `two_factor_auth`), then update the plugin and apply the data update (`php artisan gp247:update`, or the
+  "Apply" button on the Extension screen) to create the trusted-device table.
+- Signed-in users with MFA on are asked for their code **once** after the update — this is expected.
+- HTTPS sites should set `SESSION_SECURE_COOKIE=true`.
+
 ### Version 2.3.0
-- MFA for REST API v2 sign-in (customer + admin) through the `login/challenge` step of gp247/core 3.6: TOTP or recovery code, code replay blocked, a forcing guard blocks the API until MFA is set up
+- MFA for REST API v2 sign-in (customer + admin) through the `login/challenge` step of gp247/core: TOTP or recovery code, code replay blocked, a forcing guard blocks the API until MFA is set up
 
 ### Version 1.0
 - Initial release

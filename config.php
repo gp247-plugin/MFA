@@ -1,10 +1,12 @@
 <?php
 
 return [
-    // Default guard to use for MFA
+    // Guard used when the mfa.verify middleware is attached without a guard parameter
     'default_guard' => 'customer',
-    
-    // Guards configuration - support for multiple guards
+
+    // Guards configuration — only guards that exist in GP247 (core, shop, MultiVendor).
+    // Site owners edit enabled/forced/tunables from the admin screen (stored in admin_config);
+    // this file only holds package defaults and is replaced on plugin update.
     'guards' => [
         'customer' => [
             'enabled' => 0,
@@ -16,6 +18,7 @@ return [
             'qr_code_size' => 200,
             'recovery_codes_count' => 8,
             'window' => 1, // Time window in 30-second increments
+            'trust_device_days' => 30, // "Trust this device" lifetime; 0 turns the option off
         ],
         'admin' => [
             'enabled' => 1,
@@ -27,28 +30,19 @@ return [
             'qr_code_size' => 200,
             'recovery_codes_count' => 8,
             'window' => 1,
+            'trust_device_days' => 30,
         ],
         'vendor' => [
             'enabled' => 0,
             'forced' => 0,
-            'model' => 'App\GP247\Plugins\MultiVendorPro\Models\VendorUser',
+            'model' => 'App\GP247\Plugins\MultiVendor\Models\VendorUser',
             'redirect_after_verify' => 'vendor_admin.home',
             'redirect_after_login' => 'mfa.verify.show',
             'redirect_need_login' => 'vendor.login',
             'qr_code_size' => 200,
             'recovery_codes_count' => 8,
             'window' => 1,
-        ],
-        'pmo_partner' => [
-            'enabled' => 0,
-            'forced' => 0,
-            'model' => 'App\GP247\Plugins\PmoPartner\Models\PmoPartnerUser', // Change to your PMO model
-            'redirect_after_verify' => 'partner.home',
-            'redirect_after_login' => 'mfa.verify.show',
-            'redirect_need_login' => 'partner.login',
-            'qr_code_size' => 200,
-            'recovery_codes_count' => 8,
-            'window' => 1,
+            'trust_device_days' => 30,
         ],
     ],
 
@@ -58,11 +52,8 @@ return [
     // Enable/disable recovery codes
     'enable_recovery_codes' => true,
 
-    // Session key to store MFA verification status
+    // Session key to store MFA verification status ([guard => user id])
     'session_key' => 'mfa_verified',
-
-    // Session lifetime for MFA verification (in minutes)
-    'session_lifetime' => 120,
 
     // QR Code configuration
     'qr_code' => [
@@ -71,4 +62,3 @@ return [
         'error_correction' => 'high', // low, medium, quartile, high
     ],
 ];
-

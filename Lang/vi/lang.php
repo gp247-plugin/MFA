@@ -146,6 +146,26 @@ return [
     'guard_customer' => 'Khách hàng',
     'guard_admin' => 'Quản trị viên',
     'guard_vendor' => 'Nhà cung cấp',
-    'guard_pmo_partner' => 'PMO',
+
+    // Thiết bị tin tưởng (2.4.0)
+    'trust_device_label' => 'Tin tưởng thiết bị này trong :days ngày',
+    'trust_device_hint' => 'Trên trình duyệt này bạn chỉ cần mật khẩu để đăng nhập. Không chọn trên máy dùng chung hoặc máy công cộng.',
+    'trust_device_days' => 'Tin tưởng thiết bị (ngày)',
+    'config_guide_trust_device' => 'Tin tưởng thiết bị (ngày): trình duyệt mà người dùng đã chọn "Tin tưởng thiết bị này" được bỏ qua bước nhập mã trong bao lâu — mật khẩu luôn bắt buộc. Đặt 0 để tắt tuỳ chọn.',
+    'trusted_devices' => 'Thiết bị tin tưởng',
+    'trusted_devices_desc' => 'Trình duyệt bạn đã chọn "Tin tưởng thiết bị này" chỉ cần mật khẩu khi đăng nhập, cho tới khi hết hạn. Chúng bị gỡ khi bạn đổi mật khẩu, tắt MFA hoặc đăng nhập bằng mã khôi phục.',
+    'trusted_devices_none' => 'Chưa có thiết bị tin tưởng.',
+    'trusted_device_unknown' => 'Trình duyệt không xác định',
+    'trusted_device_current' => 'Trình duyệt này',
+    'trusted_device_created' => 'Tin tưởng từ',
+    'trusted_device_expires' => 'Hết hạn',
+    'trusted_device_revoke' => 'Gỡ',
+    'trusted_devices_revoke_all' => 'Gỡ tất cả thiết bị tin tưởng',
+    'trusted_device_revoked' => 'Thiết bị này không còn được tin tưởng.',
+    'trusted_devices_revoked' => 'Không còn thiết bị nào được tin tưởng.',
+    'trusted_device_not_found' => 'Không tìm thấy thiết bị tin tưởng.',
+
+    // Giới hạn màn nhập mã (2.4.0)
+    'verify_locked' => 'Nhập sai mã quá nhiều lần. Vui lòng thử lại sau :minutes phút.',
 ];
 

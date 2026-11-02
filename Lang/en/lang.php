@@ -146,6 +146,26 @@ return [
     'guard_customer' => 'Customer',
     'guard_admin' => 'Administrator',
     'guard_vendor' => 'Vendor',
-    'guard_pmo_partner' => 'PMO',
+
+    // Trusted devices (2.4.0)
+    'trust_device_label' => 'Trust this device for :days days',
+    'trust_device_hint' => 'On this browser you will only need your password to sign in. Do not tick this on a shared or public computer.',
+    'trust_device_days' => 'Trust device (days)',
+    'config_guide_trust_device' => 'Trust device (days): how long a browser where the user ticked "Trust this device" skips the code — the password is always required. 0 turns the option off.',
+    'trusted_devices' => 'Trusted devices',
+    'trusted_devices_desc' => 'Browsers where you ticked "Trust this device" sign in with your password only, until they expire. They are removed when you change your password, turn MFA off or sign in with a recovery code.',
+    'trusted_devices_none' => 'No trusted devices.',
+    'trusted_device_unknown' => 'Unknown browser',
+    'trusted_device_current' => 'This browser',
+    'trusted_device_created' => 'Trusted on',
+    'trusted_device_expires' => 'Expires',
+    'trusted_device_revoke' => 'Remove',
+    'trusted_devices_revoke_all' => 'Remove all trusted devices',
+    'trusted_device_revoked' => 'This device is no longer trusted.',
+    'trusted_devices_revoked' => 'No device is trusted any more.',
+    'trusted_device_not_found' => 'Trusted device not found.',
+
+    // Verify screen limit (2.4.0)
+    'verify_locked' => 'Too many wrong codes. Please try again in :minutes minutes.',
 ];
 

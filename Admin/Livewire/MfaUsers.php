@@ -4,6 +4,7 @@
 namespace App\GP247\Plugins\MFA\Admin\Livewire;
 
 use App\GP247\Plugins\MFA\Models\TwoFactorAuth;
+use App\GP247\Plugins\MFA\Services\TrustedDeviceService;
 use GP247\Core\AdminShell\Infrastructure\GP247AdminComponent;
 use Livewire\Attributes\Url;
 use Livewire\WithPagination;
@@ -17,7 +18,7 @@ use Livewire\WithPagination;
  *
  * Gated by `admin_mfa` (same convention as MfaDashboard / the News plugin).
  *
- * @aidlc-unit plugin-mfa
+ * @aidlc-unit mfa-plugin
  * @aidlc-story GP247-v2-compat
  * @aidlc-adr ADR-001, ADR-005, ADR-007
  */
@@ -98,10 +99,13 @@ class MfaUsers extends GP247AdminComponent
     }
 
     /**
-     * Reset (delete) the MFA enrolment of a user for the current guard.
+     * Reset (delete) the MFA enrolment of a user for the current guard, and stop
+     * trusting every browser of that user.
      *
      * @param int|string $userId
      * @return void
+     *
+     * @aidlc-story US-mfa-trusted-device-revoke
      */
     public function resetUser($userId): void
     {
@@ -116,6 +120,7 @@ class MfaUsers extends GP247AdminComponent
         $record = TwoFactorAuth::where('user_type', $guardConfig['model'])
             ->where('user_id', $userId)
             ->first();
+        app(TrustedDeviceService::class)->revokeAll($guardConfig['model'], (string) $userId);
 
         if ($record) {
             $record->delete();

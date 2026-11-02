@@ -20,7 +20,7 @@ use GP247\Core\AdminShell\Infrastructure\GP247AdminComponent;
  * Extends GP247AdminComponent for Layer-2 RBAC + shared layout. Gated by
  * `admin_mfa` (super administrator bypasses; granular roles need the slug).
  *
- * @aidlc-unit plugin-mfa
+ * @aidlc-unit mfa-plugin
  * @aidlc-story US-PLG-004, GP247-v2-compat
  * @aidlc-adr ADR-001, ADR-005, ADR-007, plugin-manager_extension-update-flow
  */
@@ -35,7 +35,7 @@ class MfaDashboard extends GP247AdminComponent
 
     /**
      * Editable per-guard settings, keyed by guard: enabled, forced,
-     * qr_code_size, recovery_codes_count, window. Bound to the settings form.
+     * qr_code_size, recovery_codes_count, window, trust_device_days. Bound to the settings form.
      *
      * @var array<string, array<string, mixed>>
      */
@@ -68,6 +68,7 @@ class MfaDashboard extends GP247AdminComponent
                 'qr_code_size' => (int) ($conf['qr_code_size'] ?? 200),
                 'recovery_codes_count' => (int) ($conf['recovery_codes_count'] ?? 8),
                 'window' => (int) ($conf['window'] ?? 1),
+                'trust_device_days' => (int) ($conf['trust_device_days'] ?? 30),
             ];
         }
     }
@@ -87,6 +88,7 @@ class MfaDashboard extends GP247AdminComponent
             'settings.*.qr_code_size' => ['integer', 'min:50', 'max:1000'],
             'settings.*.recovery_codes_count' => ['integer', 'min:1', 'max:50'],
             'settings.*.window' => ['integer', 'min:0', 'max:10'],
+            'settings.*.trust_device_days' => ['integer', 'min:0', 'max:365'],
         ]);
 
         mfa_save_guard_settings($this->settings);

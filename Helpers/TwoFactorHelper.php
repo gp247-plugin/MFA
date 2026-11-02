@@ -2,14 +2,27 @@
 
 namespace App\GP247\Plugins\MFA\Helpers;
 
+use App\GP247\Plugins\MFA\Models\TwoFactorAuth;
 use PragmaRX\Google2FA\Google2FA;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
+use Illuminate\Support\Facades\Cache;
 
 class TwoFactorHelper
 {
+    /**
+     * Cache key prefix of the last accepted TOTP time step, per MFA record.
+     *
+     * WHY shared: the website and REST API v2 read the same key, so a code used
+     * on one channel cannot be replayed on the other. Value kept from 2.3.0.
+     */
+    public const REPLAY_PREFIX = 'mfa-api-totp:';
+
+    /** How long the last accepted time step is remembered (seconds). */
+    public const REPLAY_TTL = 600;
+
     protected $google2fa;
 
     public function __construct()
@@ -89,6 +102,31 @@ class TwoFactorHelper
     {
         $step = $this->google2fa->verifyKeyNewer($secret, $code, (int) $lastTimestep, $window);
         return is_int($step) ? $step : false;
+    }
+
+    /**
+     * Accept an authenticator code for $record at most once per time step, on any channel.
+     *
+     * @param TwoFactorAuth $record Enabled MFA record.
+     * @param string        $code   6-digit code.
+     * @param int           $window Allowed drift in 30-second steps.
+     * @return bool True when accepted (the step is remembered and last_used_at updated).
+     *
+     * @aidlc-unit mfa-plugin
+     * @aidlc-story US-mfa-web-verify-brute-force, US-mfa-api-login-challenge
+     * @aidlc-adr mfa-plugin_web-verify-throttle
+     */
+    public function acceptCodeOnce(TwoFactorAuth $record, string $code, int $window = 1): bool
+    {
+        $key = self::REPLAY_PREFIX . $record->id;
+        $step = $this->verifyCodeNewer($record->getDecryptedSecretAttribute(), $code, (int) Cache::get($key, 0), $window);
+        if ($step === false) {
+            return false;
+        }
+        Cache::put($key, (int) $step, self::REPLAY_TTL);
+        $record->forceFill(['last_used_at' => now()])->save();
+
+        return true;
     }
 
     /**

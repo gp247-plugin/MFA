@@ -3,10 +3,19 @@
 namespace App\GP247\Plugins\MFA\Middleware;
 
 use App\GP247\Plugins\MFA\Models\TwoFactorAuth;
+use App\GP247\Plugins\MFA\Services\TrustedDeviceService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Ask a password-authenticated user of a guard for the second factor once per
+ * session, unless this browser is trusted for that account.
+ *
+ * @aidlc-unit mfa-plugin
+ * @aidlc-story US-mfa-verified-session-per-guard, US-mfa-trusted-device
+ * @aidlc-adr mfa-plugin_verified-session-per-guard, mfa-plugin_trusted-device-cookie
+ */
 class TwoFactorAuthentication
 {
     /**
@@ -14,36 +23,34 @@ class TwoFactorAuthentication
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure  $next
-     * @param  string|null  $guard
+     * @param  string|null  $guard Guard key; null = config default_guard.
      * @return mixed
      */
     public function handle(Request $request, Closure $next, $guard = null)
     {
-        // Determine the guard
-        $guard = $guard ?? $this->getGuardFromRequest($request);
-        
+        // WHY no URL guessing: every place the plugin attaches this middleware passes
+        // the guard; the old path sniffing never matched (path() has no leading "/").
+        $guard = $guard ?? config('Plugins/MFA.default_guard', 'customer');
+
         $guardConfig = mfa_get_guard_config($guard);
-        
+
         // Check if MFA is enabled for this guard
         if (!$guardConfig || !$guardConfig['enabled']) {
             return $next($request);
         }
 
-        // Check if user is authenticated
+        // The second factor only applies after the password: no user, nothing to do
         $user = Auth::guard($guard)->user();
         if (!$user) {
             return $next($request);
         }
 
-
-        // Check if session already verified
-        if (mfa_is_verified()) {
+        if (mfa_is_verified($guard, $user)) {
             return $next($request);
         }
 
-        // Check if user has MFA enabled
         $mfaRecord = TwoFactorAuth::where('user_type', $guardConfig['model'])
-            ->where('user_id', $user->id)
+            ->where('user_id', $user->getAuthIdentifier())
             ->where('enabled', 1)
             ->first();
 
@@ -57,43 +64,14 @@ class TwoFactorAuthentication
             return $next($request);
         }
 
+        if (app(TrustedDeviceService::class)->isTrusted($request, $guard, $guardConfig, $user)) {
+            mfa_set_verified($guard, $user);
+            return $next($request);
+        }
+
         // Store guard in session for verification
         session(['mfa_guard' => $guard]);
 
-        // User has MFA enabled but not verified in this session
         return redirect()->route('mfa.verify.show', $guard);
     }
-
-    /**
-     * Get guard from request
-     *
-     * @param Request $request
-     * @return string
-     */
-    protected function getGuardFromRequest(Request $request)
-    {
-        // Try to get guard from route parameter
-        if ($request->route('guard')) {
-            return $request->route('guard');
-        }
-
-        // Try to detect from URL path
-        $path = $request->path();
-        
-        if (str_contains($path, '/admin')) {
-            return 'admin';
-        }
-        
-        if (str_contains($path, '/vendor')) {
-            return 'vendor';
-        }
-        
-        if (str_contains($path, '/pmo')) {
-            return 'pmo';
-        }
-
-        // Default to customer
-        return 'customer';
-    }
 }
-

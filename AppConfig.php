@@ -69,6 +69,27 @@ class AppConfig extends ExtensionConfigDefault
         return $return;
     }
 
+    /**
+     * Bring the data of an installed copy up to this version (2.4.0: trusted-device
+     * table, vendor enrolments under the real model name). Safe to run again.
+     *
+     * @param string|null $fromVersion Version installed before the file replacement.
+     * @return array ['error' => 0|1, 'msg' => string]
+     *
+     * @aidlc-unit mfa-plugin
+     * @aidlc-story US-mfa-guard-config-real-guards
+     */
+    public function update(?string $fromVersion = null)
+    {
+        try {
+            (new ExtensionModel)->installExtension();
+        } catch (\Throwable $e) {
+            return ['error' => 1, 'msg' => $e->getMessage()];
+        }
+
+        return ['error' => 0, 'msg' => ''];
+    }
+
     public function uninstall()
     {
         //Please delete all values inserted in the installation step

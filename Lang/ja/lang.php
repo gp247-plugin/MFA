@@ -146,5 +146,25 @@ return [
     'guard_customer' => '顧客',
     'guard_admin' => '管理者',
     'guard_vendor' => 'ベンダー',
-    'guard_pmo_partner' => 'PMO',
+
+    // 信頼済みデバイス (2.4.0)
+    'trust_device_label' => 'このデバイスを :days 日間信頼する',
+    'trust_device_hint' => 'このブラウザではパスワードだけでサインインできます。共用・公共のパソコンではチェックしないでください。',
+    'trust_device_days' => 'デバイスを信頼する日数',
+    'config_guide_trust_device' => 'デバイスを信頼する日数：「このデバイスを信頼する」を選んだブラウザで認証コードを省略できる期間です（パスワードは常に必要）。0 にするとこのオプションは無効になります。',
+    'trusted_devices' => '信頼済みデバイス',
+    'trusted_devices_desc' => '「このデバイスを信頼する」を選んだブラウザは、有効期限までパスワードだけでサインインできます。パスワードの変更、MFA の無効化、リカバリーコードでのサインイン時に削除されます。',
+    'trusted_devices_none' => '信頼済みデバイスはありません。',
+    'trusted_device_unknown' => '不明なブラウザ',
+    'trusted_device_current' => 'このブラウザ',
+    'trusted_device_created' => '信頼した日時',
+    'trusted_device_expires' => '有効期限',
+    'trusted_device_revoke' => '削除',
+    'trusted_devices_revoke_all' => 'すべての信頼済みデバイスを削除',
+    'trusted_device_revoked' => 'このデバイスは信頼されなくなりました。',
+    'trusted_devices_revoked' => '信頼済みデバイスはすべて削除されました。',
+    'trusted_device_not_found' => '信頼済みデバイスが見つかりません。',
+
+    // 認証コード入力の制限 (2.4.0)
+    'verify_locked' => 'コードの入力ミスが多すぎます。:minutes 分後にもう一度お試しください。',
 ];
